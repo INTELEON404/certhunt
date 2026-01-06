@@ -1,3 +1,8 @@
+<div align="center">
+  <img src="https://github.com/INTELEON404/Template/blob/main/certhunt.png" width="600" alt="TEMPLATE-PLUS Logo"/>
+  <br><br>
+</div>
+
 # 🏹 CERTHUNT v1
 
 ### **“Automated Passive Domain Enumeration & DNS Validation”**
