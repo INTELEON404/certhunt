@@ -37,7 +37,9 @@ Run this command in your terminal to install the tool and its dependencies autom
 
 ```bash
 wget -q https://raw.githubusercontent.com/INTELEON404/certhunt/main/install.sh -O install.sh && chmod +x install.sh && ./install.sh
-
+```
+```
+rm install.sh
 ```
 
 ### 2. Manual Installation
