@@ -1,18 +1,18 @@
 # 🏹 CERTHUNT v1
 
-### **“AUTOMATED PASSIVE DOMAIN ENUMERATION”**
+### **“Automated Passive Domain Enumeration & DNS Validation”**
 
-**HUNTER v1** is a high-performance, multi-threaded reconnaissance tool designed for security researchers and Bug Bounty hunters. It streamlines the "Passive Reconnaissance" phase by querying multiple public APIs and databases to discover subdomains without interacting directly with the target infrastructure.
+**CERTHUNT v1** (also known as **HUNTER**) is a high-performance, multi-threaded reconnaissance tool designed for security researchers and Bug Bounty hunters. It streamlines the "Passive Reconnaissance" phase by querying multiple public APIs and databases to discover subdomains without interacting directly with the target infrastructure.
 
 ---
 
 ## 🌟 Key Features
 
-* **12+ Passive Sources:** Aggregates data from the most reliable sources in the industry (Crt.sh, AlienVault, Wayback Machine, etc.).
+* **12+ Passive Sources:** Aggregates data from reliable sources like Crt.sh, AlienVault, Wayback Machine, and more.
 * **Intelligent Deduplication:** Automatically cleans, normalizes, and removes duplicate entries from different sources.
 * **Active DNS Verification:** Optional high-speed DNS resolution to identify which discovered subdomains are actually "Live."
 * **Multi-threaded Engine:** Powered by `ThreadPoolExecutor` for simultaneous API querying and rapid verification.
-* **Developer Friendly:** Clean Python code, modular source functions, and professional ANSI-colored CLI output.
+* **Global Access:** Easily installable as a system-wide command for seamless usage.
 * **Automatic Export:** Interactive prompt to save discovered targets into a structured `.txt` file.
 
 ---
@@ -29,55 +29,67 @@
 
 ## 🚀 Installation
 
-Ensure you have **Python 3.7+** installed on your system.
+Choose one of the two methods below. The **Automated Install** is recommended for quick setup.
 
+### 1. Quick Automated Install (Recommended)
 
-### Clone the repository
+Run this command in your terminal to install the tool and its dependencies automatically:
+
+```bash
+wget -q https://raw.githubusercontent.com/INTELEON404/certhunt/main/install.sh -O install.sh && chmod +x install.sh && ./install.sh
+
+```
+
+### 2. Manual Installation
+
+If you prefer to set it up manually:
+
+#### Clone the repository
 ```
 git clone https://github.com/INTELEON404/certhunt.git
-```
-
-### Navigate to the directory
-```
 cd certhunt
 ```
-
-### Install dependencies
+#### Install dependencies
 ```
-pip install -r requirements.txt
+pip install requests urllib3 --break-system-packages
+```
+#### Move to /usr/bin for global access
+```
+chmod +x certhunt
+sudo mv certhunt /usr/bin/certhunt
 
 ```
-
-*(Note: If you haven't created a requirements.txt, just run: `pip install requests urllib3`)*
 
 ---
 
 ## 💻 Usage
 
+After installation, you can run the tool from any directory using the `certhunt` command.
+
 ### Basic Enumeration
 
-Simply find subdomains via passive APIs:
+To find subdomains via passive APIs:
 
 ```bash
-python3 hunter.py -d google.com
+certhunt -d google.com
 
 ```
 
 ### Full Recon (Discovery + Live Validation)
 
-Find subdomains and verify if they resolve to an IP address:
+Find subdomains and verify if they resolve to an active IP address:
 
 ```bash
-python3 hunter.py -d example.com -v
+certhunt -d example.com -v
 
 ```
 
 ### Advanced Threading
 
-Speed up the verification process for large result sets:
+Speed up the verification process for large result sets by increasing the thread count:
 
 ```bash
-python3 hunter.py -d example.com -v -t 100
+certhunt -d example.com -v -t 100
 
 ```
 
@@ -95,11 +107,11 @@ python3 hunter.py -d example.com -v -t 100
 
 ## 🔄 Workflow Logic
 
-1. **Input Normalization:** Strips protocols (http/https) and 'www' from the target.
-2. **Parallel Harvesting:** Launches threads for each API source simultaneously.
-3. **Data Cleaning:** Filters out out-of-scope domains and normalizes text.
-4. **Verification (Optional):** Performs DNS lookups to validate the existence of the host.
-5. **Reporting:** Displays a color-coded summary and offers to save the output locally.
+1. **Input Normalization:** Strips protocols (http/https) and 'www' to ensure a clean target domain.
+2. **Parallel Harvesting:** Launches threads for each API source simultaneously for maximum speed.
+3. **Data Cleaning:** Filters out out-of-scope domains and normalizes the text.
+4. **Verification (Optional):** Performs DNS lookups to validate the existence of the discovered hosts.
+5. **Reporting:** Displays a color-coded summary and offers to save the output locally as a `.txt` file.
 
 ---
 
@@ -113,4 +125,4 @@ This tool is intended for **legal** security auditing and educational purposes o
 
 Developed by **[INTELEON404](https://www.google.com/search?q=https://github.com/INTELEON404)**.
 
-
+Contributions, issues, and feature requests are welcome!
