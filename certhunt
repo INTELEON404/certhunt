@@ -4,7 +4,6 @@ import argparse
 import requests
 import sys
 import socket
-import json
 import time
 import shutil
 import itertools
@@ -15,37 +14,40 @@ from urllib3.exceptions import InsecureRequestWarning
 # DISABLE SSL WARNINGS
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
-VERSION = "HUNTERv1.2"
+VERSION = "HUNTER v1.3"
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 }
-TIMEOUT = 40
+TIMEOUT = 35
 
 class Colors:
-    MINT    = '\033[38;5;121m'
-    SKY     = '\033[38;5;117m'
-    GOLD    = '\033[38;5;222m'
-    CORAL   = '\033[38;5;210m'
+    MINT     = '\033[38;5;121m'
+    SKY      = '\033[38;5;117m'
+    GOLD     = '\033[38;5;222m'
+    CORAL    = '\033[38;5;210m'
     LAVENDER = '\033[38;5;183m'
-    SILVER  = '\033[38;5;249m'
-    SLATE   = '\033[38;5;241m'
-    BOLD    = '\033[1m'
-    ENDC    = '\033[0m'
+    SILVER   = '\033[38;5;249m'
+    SLATE    = '\033[38;5;241m'
+    BOLD     = '\033[1m'
+    ENDC     = '\033[0m'
 
 stop_animation = False
+session = requests.Session()
+session.headers.update(HEADERS)
 
 def status_log(msg, color=Colors.SILVER):
     if sys.stdout.isatty():
         print(f"{color}{msg}{Colors.ENDC}")
 
 def loading_animation():
-    """ANIMATION STYLE: . > .. > ..."""
-    for dots in itertools.cycle(['‎.','..', '...']):
-        if stop_animation:
-            break
-        sys.stdout.write(f"\r {Colors.GOLD}EXTRACTING DEEP DATA{dots}{Colors.ENDC}")
+    """আপনার দেওয়া ব্রেইল ক্যারেক্টার দিয়ে লোডিং স্পিনার"""
+    # '⠏', '⠛', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠍'
+    spinner = itertools.cycle(['⠏', '⠛', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠍'])
+    while not stop_animation:
+        char = next(spinner)
+        sys.stdout.write(f"\r {Colors.MINT}{char}{Colors.ENDC} {Colors.GOLD}EXTRACTING DEEP DATA...{Colors.ENDC}")
         sys.stdout.flush()
-        time.sleep(0.4)
+        time.sleep(0.1)
     sys.stdout.write("\r" + " " * 50 + "\r")
 
 def get_banner():
@@ -61,7 +63,7 @@ def get_banner():
         for line in art:
             print(line.center(width))
         info = f"DEVELOPED BY INTELEON404 | VERSION {VERSION}"
-        tagline = "“DEEP PASSIVE INTELLIGENCE FOR ELITE RECON”"
+        tagline = "“ADVANCED SUBDOMAIN RECONNAISSANCE”"
         print(f"\n{Colors.LAVENDER}{info.center(width)}{Colors.ENDC}")
         print(f"{Colors.SLATE}{tagline.center(width)}{Colors.ENDC}\n")
 
@@ -74,23 +76,24 @@ def dns_resolver(domain):
     try:
         socket.gethostbyname(domain)
         return True
-    except: return False
+    except:
+        return False
 
 def request_api(url, is_json=True):
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=TIMEOUT, verify=False)
+        resp = session.get(url, timeout=TIMEOUT, verify=False)
         if resp.status_code == 200:
             return resp.json() if is_json else resp.text
-    except: pass
+    except:
+        pass
     return None
 
-# --- AGGRESSIVE SOURCE ENGINES ---
-
 def extract_all(text, domain):
-    """AGGRESSIVE REGEX TO FIND ANYTHING ENDING WITH TARGET DOMAIN"""
-    pattern = r'(?:[a-zA-Z0-9-]+\.)+' + re.escape(domain)
-    matches = re.findall(pattern, str(text))
-    return {m.lower() for m in matches}
+    pattern = r'(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+' + re.escape(domain)
+    matches = re.findall(pattern, str(text).lower())
+    return {m.strip() for m in matches}
+
+# --- SOURCE ENGINES ---
 
 def source_abuseipdb(domain):
     res = request_api(f"https://www.abuseipdb.com/whois/{domain}", is_json=False)
@@ -98,12 +101,7 @@ def source_abuseipdb(domain):
 
 def source_alienvault(domain):
     data = request_api(f"https://otx.alienvault.com/api/v1/indicators/domain/{domain}/passive_dns")
-    subs = set()
-    if data and "passive_dns" in data:
-        for entry in data["passive_dns"]:
-            h = entry.get("hostname", "").lower()
-            if h.endswith(domain): subs.add(h)
-    return subs
+    return {entry.get("hostname", "").lower() for entry in data.get("passive_dns", []) if entry.get("hostname", "").endswith(domain)} if data else set()
 
 def source_anubis(domain):
     data = request_api(f"https://jldc.me/anubis/subdomains/{domain}")
@@ -111,17 +109,11 @@ def source_anubis(domain):
 
 def source_bevigil(domain):
     data = request_api(f"https://osint.bevigil.com/api/{domain}/subdomains/")
-    if data and "subdomains" in data:
-        return {s.lower() for s in data["subdomains"]}
-    return set()
+    return {s.lower() for s in data.get("subdomains", [])} if data else set()
 
 def source_bufferover(domain):
     data = request_api(f"https://dns.bufferover.run/dns?q=.{domain}")
-    subs = set()
-    if data and data.get("FDNS_A"):
-        for entry in data["FDNS_A"]:
-            if "," in entry: subs.add(entry.split(",")[1].lower())
-    return subs
+    return {entry.split(",")[1].lower() for entry in data.get("FDNS_A", []) if "," in entry} if data else set()
 
 def source_certspotter(domain):
     data = request_api(f"https://api.certspotter.com/v1/issuances?domain={domain}&include_subdomains=true&expand=dns_names")
@@ -150,9 +142,7 @@ def source_crtsh(domain):
 
 def source_fullhunt(domain):
     data = request_api(f"https://fullhunt.io/api/v1/domain/{domain}/subdomains")
-    if data and "hosts" in data:
-        return {s.lower() for s in data["hosts"]}
-    return set()
+    return {s.lower() for s in data.get("hosts", [])} if data else set()
 
 def source_hackertarget(domain):
     res = request_api(f"https://api.hackertarget.com/hostsearch/?q={domain}", is_json=False)
@@ -193,21 +183,18 @@ def source_urlscan(domain):
 
 def source_virustotal(domain):
     data = request_api(f"https://www.virustotal.com/ui/domains/{domain}/subdomains?limit=40")
-    subs = set()
-    if data and "data" in data:
-        for entry in data["data"]: subs.add(entry.get("id", "").lower())
-    return subs
+    return {entry.get("id", "").lower() for entry in data.get("data", [])} if data else set()
 
 def source_wayback(domain):
     url = f"https://web.archive.org/cdx/search/cdx?url=*.{domain}/*&output=json&collapse=urlkey&fl=original"
     res = request_api(url, is_json=False)
     return extract_all(res, domain) if res else set()
 
-# --- EXECUTION ENGINE ---
+# --- EXECUTION ---
 
 def main():
     global stop_animation
-    parser = argparse.ArgumentParser(description="HUNTER MAX DEPTH")
+    parser = argparse.ArgumentParser(description="HUNTER ULTRA RECON")
     parser.add_argument("-d", "--domain", required=True, help="TARGET DOMAIN")
     parser.add_argument("-v", "--verify", action="store_true", help="VERIFY LIVE STATUS")
     parser.add_argument("-t", "--threads", type=int, default=60, help="THREADS")
@@ -217,7 +204,7 @@ def main():
     get_banner()
 
     status_log(f"[*] TARGETING : {target.upper()}", Colors.SKY)
-    status_log(f"[*] MODE      : AGGRESSIVE DEPTH RECON ACTIVATED", Colors.GOLD)
+    status_log(f"[*] SOURCES   : 19 PASSIVE ENGINES ACTIVATED", Colors.GOLD)
     status_log(f"{Colors.SLATE}{'-' * 60}{Colors.ENDC}")
 
     engines = [
@@ -243,22 +230,20 @@ def main():
                 found = task.result()
                 results_map[name] = found
                 if found: discovered.update(found)
-            except: results_map[name] = None
+            except:
+                results_map[name] = set()
 
     stop_animation = True
     if sys.stdout.isatty():
         anim_thread.join()
 
-    # ALPHABETICAL SUMMARY
     for name in sorted(results_map.keys()):
-        found = results_map[name]
-        count = len(found) if found else 0
+        count = len(results_map[name])
         if count > 0:
             status_log(f" {Colors.MINT}[✓]{Colors.ENDC} {name:<18} : {Colors.BOLD}{count}{Colors.ENDC} FOUND", Colors.SILVER)
         else:
             status_log(f" {Colors.CORAL}[✗]{Colors.ENDC} {name:<18} : 0 FOUND", Colors.SLATE)
 
-    # DEDUPLICATION & FINAL FILTER
     final_list = {s.strip().lower().rstrip('.') for s in discovered if s.endswith(target) and s != target}
     final_list = sorted(list(final_list))
 
@@ -266,7 +251,7 @@ def main():
     status_log(f" {Colors.LAVENDER}[★] TOTAL UNIQUE DISCOVERED: {len(final_list)}{Colors.ENDC}", Colors.BOLD)
 
     if args.verify and final_list:
-        status_log(f" [*] VERIFYING LIVE STATUS FOR {len(final_list)} HOSTS...", Colors.GOLD)
+        status_log(f" [*] VERIFYING LIVE STATUS...", Colors.GOLD)
         live = []
         with ThreadPoolExecutor(max_workers=args.threads) as v_exec:
             v_tasks = {v_exec.submit(dns_resolver, s): s for s in final_list}
@@ -283,10 +268,10 @@ def main():
             for s in final_list:
                 print(f" {Colors.MINT}→{Colors.ENDC} {Colors.SILVER}{s}{Colors.ENDC}")
             print(f"{Colors.SKY}{Colors.BOLD}{'='*59}{Colors.ENDC}")
+            
             save_opt = input(f"\n{Colors.GOLD}[?] EXPORT RESULTS? (Y/N): {Colors.ENDC}").lower()
             if save_opt == 'y':
                 fname = input(f"{Colors.GOLD}[?] FILENAME: {Colors.ENDC}") or f"hunter_{target}.txt"
-                if not fname.endswith(".txt"): fname += ".txt"
                 with open(fname, "w") as f: f.write("\n".join(final_list))
                 print(f" {Colors.MINT}[✓] DATA EXPORTED TO: {fname}{Colors.ENDC}")
 
