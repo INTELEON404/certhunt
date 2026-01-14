@@ -13,7 +13,7 @@
 
 ## 🌟 Key Features
 
-* **12+ Passive Sources:** Aggregates data from reliable sources like Crt.sh, AlienVault, Wayback Machine, and more.
+* **19+ Passive Sources:** Aggregates data from reliable sources like Crt.sh, AlienVault, Wayback Machine, and more.
 * **Intelligent Deduplication:** Automatically cleans, normalizes, and removes duplicate entries from different sources.
 * **Active DNS Verification:** Optional high-speed DNS resolution to identify which discovered subdomains are actually "Live."
 * **Multi-threaded Engine:** Powered by `ThreadPoolExecutor` for simultaneous API querying and rapid verification.
