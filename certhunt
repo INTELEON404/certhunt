@@ -6,325 +6,295 @@ import sys
 import socket
 import json
 import time
+import shutil
+import itertools
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib3.exceptions import InsecureRequestWarning
 
-# Disable SSL warnings for cleaner output
+# DISABLE SSL WARNINGS
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
-## # CONTEXT VARIABLES # ##
-VERSION = "HUNTER v1"
+VERSION = "HUNTERv1.2"
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept": "application/json, text/plain, */*"
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 }
-TIMEOUT = 15
+TIMEOUT = 40
 
-# Enhanced ANSI Color Palette
 class Colors:
-    BLUE   = '\033[38;5;33m'
-    GREEN  = '\033[38;5;82m'
-    YELLOW = '\033[38;5;226m'
-    RED    = '\033[38;5;196m'
-    CYAN   = '\033[38;5;51m'
-    MAGENTA = '\033[38;5;201m'
-    WHITE  = '\033[38;5;255m'
-    GREY   = '\033[38;5;244m'
-    BOLD   = '\033[1m'
-    UNDERLINE = '\033[4m'
-    ENDC   = '\033[0m'
+    MINT    = '\033[38;5;121m'
+    SKY     = '\033[38;5;117m'
+    GOLD    = '\033[38;5;222m'
+    CORAL   = '\033[38;5;210m'
+    LAVENDER = '\033[38;5;183m'
+    SILVER  = '\033[38;5;249m'
+    SLATE   = '\033[38;5;241m'
+    BOLD    = '\033[1m'
+    ENDC    = '\033[0m'
 
-def banner():
-    """Prints a high-quality ASCII banner."""
-    print(f"{Colors.CYAN}{Colors.BOLD}")
-    print(r"""
-░█▀▀░█▀▀░█▀▄░▀█▀░█░█░█░█░█▀█░▀█▀
-░█░░░█▀▀░█▀▄░░█░░█▀█░█░█░█░█░░█░
-░▀▀▀░▀▀▀░▀░▀░░▀░░▀░▀░▀▀▀░▀░▀░░▀░""")
-    print(f"\n{Colors.BLUE}       Made By {Colors.BOLD}INTELEON404{Colors.ENDC} {Colors.BLUE} | {Colors.WHITE}VERSION {VERSION}{Colors.ENDC}")
-    print(f"{Colors.GREY}        “AUTOMATED PASSIVE DOMAIN ENUMERATION”{Colors.ENDC}\n")
+stop_animation = False
 
-def clear_url(target):
-    target = re.sub(r'^https?://', '', target.lower())
-    target = target.replace('www.', '')
-    return target.split('/')[0].strip()
+def status_log(msg, color=Colors.SILVER):
+    if sys.stdout.isatty():
+        print(f"{color}{msg}{Colors.ENDC}")
 
-def is_resolvable(domain):
-    """Check if domain has a valid DNS record."""
+def loading_animation():
+    """ANIMATION STYLE: . > .. > ..."""
+    for dots in itertools.cycle([".  ", ".. ", "..."]):
+        if stop_animation:
+            break
+        sys.stdout.write(f"\r {Colors.GOLD}EXTRACTING DEEP DATA{dots}{Colors.ENDC}")
+        sys.stdout.flush()
+        time.sleep(0.4)
+    sys.stdout.write("\r" + " " * 50 + "\r")
+
+def get_banner():
+    if sys.stdout.isatty():
+        columns = shutil.get_terminal_size().columns
+        width = max(columns, 70)
+        art = [
+            "░█▀▀░█▀▀░█▀▄░▀█▀░█░█░█░█░█▀█░▀█▀",
+            "░█░░░█▀▀░█▀▄░░█░░█▀█░█░█░█░█░░█░",
+            "░▀▀▀░▀▀▀░▀░▀░░▀░░▀░▀░▀▀▀░▀░▀░░▀░"
+        ]
+        print(f"{Colors.SKY}{Colors.BOLD}")
+        for line in art:
+            print(line.center(width))
+        info = f"DEVELOPED BY INTELEON404 | VERSION {VERSION}"
+        tagline = "“DEEP PASSIVE INTELLIGENCE FOR ELITE RECON”"
+        print(f"\n{Colors.LAVENDER}{info.center(width)}{Colors.ENDC}")
+        print(f"{Colors.SLATE}{tagline.center(width)}{Colors.ENDC}\n")
+
+def clean_target(domain):
+    domain = re.sub(r'^https?://', '', domain.lower())
+    domain = domain.replace('www.', '')
+    return domain.split('/')[0].strip()
+
+def dns_resolver(domain):
     try:
         socket.gethostbyname(domain)
         return True
-    except:
-        return False
+    except: return False
 
-## # NETWORK UTILITIES # ##
-def fetch_json(url):
+def request_api(url, is_json=True):
     try:
-        r = requests.get(url, headers=HEADERS, timeout=TIMEOUT, verify=False)
-        if r.status_code == 200:
-            return r.json()
-    except:
-        pass
+        resp = requests.get(url, headers=HEADERS, timeout=TIMEOUT, verify=False)
+        if resp.status_code == 200:
+            return resp.json() if is_json else resp.text
+    except: pass
     return None
 
-def fetch_text(url):
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=TIMEOUT, verify=False)
-        if r.status_code == 200:
-            return r.text
-    except:
-        pass
-    return None
+# --- AGGRESSIVE SOURCE ENGINES ---
 
-## # SOURCE FUNCTIONS (Passive APIs) # ##
+def extract_all(text, domain):
+    """AGGRESSIVE REGEX TO FIND ANYTHING ENDING WITH TARGET DOMAIN"""
+    pattern = r'(?:[a-zA-Z0-9-]+\.)+' + re.escape(domain)
+    matches = re.findall(pattern, str(text))
+    return {m.lower() for m in matches}
 
-def from_crtsh(domain):
-    results = set()
-    data = fetch_json(f"https://crt.sh/?q=%.{domain}&output=json")
-    if data:
-        for entry in data:
-            names = entry.get("name_value", "").split("\n")
-            for name in names:
-                clean_name = name.replace('*.', '').strip().lower()
-                if clean_name.endswith(domain) and clean_name != domain:
-                    results.add(clean_name)
-    return results
+def source_abuseipdb(domain):
+    res = request_api(f"https://www.abuseipdb.com/whois/{domain}", is_json=False)
+    return extract_all(res, domain) if res else set()
 
-def from_alienvault(domain):
-    results = set()
-    data = fetch_json(f"https://otx.alienvault.com/api/v1/indicators/domain/{domain}/passive_dns")
+def source_alienvault(domain):
+    data = request_api(f"https://otx.alienvault.com/api/v1/indicators/domain/{domain}/passive_dns")
+    subs = set()
     if data and "passive_dns" in data:
         for entry in data["passive_dns"]:
-            host = entry.get("hostname", "").lower()
-            if host and host.endswith(domain):
-                results.add(host)
-    return results
+            h = entry.get("hostname", "").lower()
+            if h.endswith(domain): subs.add(h)
+    return subs
 
-def from_hackertarget(domain):
-    results = set()
-    text = fetch_text(f"https://api.hackertarget.com/hostsearch/?q={domain}")
-    if text:
-        for line in text.splitlines():
-            if "," in line:
-                sub = line.split(",")[0].strip().lower()
-                if sub.endswith(domain):
-                    results.add(sub)
-    return results
+def source_anubis(domain):
+    data = request_api(f"https://jldc.me/anubis/subdomains/{domain}")
+    return {s.strip().lower() for s in data if isinstance(s, str) and s.endswith(domain)} if data else set()
 
-def from_anubis(domain):
-    results = set()
-    data = fetch_json(f"https://jldc.me/anubis/subdomains/{domain}")
-    if data:
-        for sub in data:
-            if isinstance(sub, str) and sub.endswith(domain):
-                results.add(sub.strip().lower())
-    return results
+def source_bevigil(domain):
+    data = request_api(f"https://osint.bevigil.com/api/{domain}/subdomains/")
+    if data and "subdomains" in data:
+        return {s.lower() for s in data["subdomains"]}
+    return set()
 
-def from_urlscan(domain):
-    results = set()
-    data = fetch_json(f"https://urlscan.io/api/v1/search/?q=domain:{domain}")
-    if data and "results" in data:
-        for item in data["results"]:
-            sub = item.get("page", {}).get("domain", "").lower()
-            if sub and sub.endswith(domain):
-                results.add(sub)
-    return results
+def source_bufferover(domain):
+    data = request_api(f"https://dns.bufferover.run/dns?q=.{domain}")
+    subs = set()
+    if data and data.get("FDNS_A"):
+        for entry in data["FDNS_A"]:
+            if "," in entry: subs.add(entry.split(",")[1].lower())
+    return subs
 
-def from_wayback(domain):
-    results = set()
-    url = f"https://web.archive.org/cdx/search/cdx?url=*.{domain}/*&output=json&collapse=urlkey&fl=original"
-    data = fetch_json(url)
-    if data:
-        for entry in data[1:]:
-            raw_url = entry[0]
-            sub = re.sub(r'^https?://', '', raw_url).split('/')[0].split(':')[0].lower()
-            sub = sub.replace('www.', '')
-            if sub.endswith(domain):
-                results.add(sub)
-    return results
-
-def from_rapiddns(domain):
-    results = set()
-    text = fetch_text(f"https://rapiddns.io/s/{domain}?full=1&down=1")
-    if text:
-        matches = re.findall(r'<td>([\w\.-]+\.' + re.escape(domain) + r')</td>', text)
-        for sub in matches:
-            results.add(sub.lower())
-    return results
-
-def from_threatminer(domain):
-    results = set()
-    data = fetch_json(f"https://api.threatminer.org/v2/domain.php?q={domain}&rt=5")
-    if data and "results" in data:
-        for sub in data["results"]:
-            if isinstance(sub, str):
-                results.add(sub.lower())
-    return results
-
-def from_certspotter(domain):
-    results = set()
-    data = fetch_json(f"https://api.certspotter.com/v1/issuances?domain={domain}&include_subdomains=true&expand=dns_names")
+def source_certspotter(domain):
+    data = request_api(f"https://api.certspotter.com/v1/issuances?domain={domain}&include_subdomains=true&expand=dns_names")
+    subs = set()
     if data:
         for entry in data:
             for name in entry.get("dns_names", []):
-                clean_name = name.replace('*.', '').lower()
-                if clean_name.endswith(domain):
-                    results.add(clean_name)
-    return results
+                clean = name.replace('*.', '').lower()
+                if clean.endswith(domain): subs.add(clean)
+    return subs
 
-def from_bevigil(domain):
-    results = set()
-    data = fetch_json(f"https://osint.bevigil.com/api/{domain}/subdomains/")
-    if data and "subdomains" in data:
-        for sub in data["subdomains"]:
-            results.add(sub.lower())
-    return results
+def source_commoncrawl(domain):
+    url = f"http://index.commoncrawl.org/CC-MAIN-2023-50-index?url=*.{domain}/*&output=json"
+    res = request_api(url, is_json=False)
+    return extract_all(res, domain) if res else set()
 
-def from_digitorum(domain):
-    results = set()
-    data = fetch_json(f"https://api.subdomain.center/?domain={domain}")
+def source_crtsh(domain):
+    data = request_api(f"https://crt.sh/?q=%.{domain}&output=json")
+    subs = set()
     if data:
-        for sub in data:
-            results.add(sub.lower())
-    return results
+        for item in data:
+            for name in item.get("name_value", "").split("\n"):
+                clean = name.replace('*.', '').strip().lower()
+                if clean.endswith(domain): subs.add(clean)
+    return subs
 
-def from_riddler(domain):
-    results = set()
-    data = fetch_json(f"https://riddler.io/api/search?q=pld:{domain}")
-    if data:
-        for entry in data:
-            host = entry.get("host", "").lower()
-            if host.endswith(domain):
-                results.add(host)
-    return results
+def source_fullhunt(domain):
+    data = request_api(f"https://fullhunt.io/api/v1/domain/{domain}/subdomains")
+    if data and "hosts" in data:
+        return {s.lower() for s in data["hosts"]}
+    return set()
 
-## # MAIN ENGINE # ##
+def source_hackertarget(domain):
+    res = request_api(f"https://api.hackertarget.com/hostsearch/?q={domain}", is_json=False)
+    return extract_all(res, domain) if res else set()
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Professional Passive Subdomain Enumerator")
-    parser.add_argument("-d", "--domain", required=True, help="Target domain (e.g., example.com)")
-    parser.add_argument("-v", "--verify", action="store_true", help="Verify if subdomains are alive (DNS resolution)")
-    parser.add_argument("-t", "--threads", type=int, default=20, help="Number of threads for verification (Default: 20)")
-    return parser.parse_args()
+def source_netcraft(domain):
+    res = request_api(f"https://searchdns.netcraft.com/?restriction=site+ends+with&host={domain}", is_json=False)
+    return extract_all(res, domain) if res else set()
+
+def source_omnisint(domain):
+    data = request_api(f"https://sonar.omnisint.io/all/{domain}")
+    return {s.lower() for s in data if isinstance(s, str)} if data else set()
+
+def source_rapiddns(domain):
+    res = request_api(f"https://rapiddns.io/s/{domain}?full=1&down=1", is_json=False)
+    return extract_all(res, domain) if res else set()
+
+def source_sitedossier(domain):
+    res = request_api(f"http://www.sitedossier.com/parentdomain/{domain}", is_json=False)
+    return extract_all(res, domain) if res else set()
+
+def source_subdomaincenter(domain):
+    data = request_api(f"https://api.subdomain.center/?domain={domain}")
+    return {s.lower() for s in data if isinstance(s, str)} if data else set()
+
+def source_synapsint(domain):
+    data = request_api(f"https://synapsint.com/report.php?domain={domain}", is_json=False)
+    return extract_all(data, domain) if data else set()
+
+def source_urlscan(domain):
+    data = request_api(f"https://urlscan.io/api/v1/search/?q=domain:{domain}")
+    subs = set()
+    if data and "results" in data:
+        for item in data["results"]:
+            sub = item.get("page", {}).get("domain", "").lower()
+            if sub.endswith(domain): subs.add(sub)
+    return subs
+
+def source_virustotal(domain):
+    data = request_api(f"https://www.virustotal.com/ui/domains/{domain}/subdomains?limit=40")
+    subs = set()
+    if data and "data" in data:
+        for entry in data["data"]: subs.add(entry.get("id", "").lower())
+    return subs
+
+def source_wayback(domain):
+    url = f"https://web.archive.org/cdx/search/cdx?url=*.{domain}/*&output=json&collapse=urlkey&fl=original"
+    res = request_api(url, is_json=False)
+    return extract_all(res, domain) if res else set()
+
+# --- EXECUTION ENGINE ---
 
 def main():
-    banner()
-    args = parse_args()
-    target = clear_url(args.domain)
+    global stop_animation
+    parser = argparse.ArgumentParser(description="HUNTER MAX DEPTH")
+    parser.add_argument("-d", "--domain", required=True, help="TARGET DOMAIN")
+    parser.add_argument("-v", "--verify", action="store_true", help="VERIFY LIVE STATUS")
+    parser.add_argument("-t", "--threads", type=int, default=60, help="THREADS")
+    args = parser.parse_args()
 
-    print(f"{Colors.BOLD}{Colors.WHITE}[!] Target Domain : {Colors.CYAN}{target}{Colors.ENDC}")
-    print(f"{Colors.BOLD}{Colors.WHITE}[!] Configuration : {Colors.YELLOW}Passive Scan Mode Activated{Colors.ENDC}")
-    print(f"{Colors.GREY}{'-'*60}{Colors.ENDC}")
+    target = clean_target(args.domain)
+    get_banner()
 
-    sources = {
-        "Crt.sh": from_crtsh,
-        "Alienvault OTX": from_alienvault,
-        "HackerTarget": from_hackertarget,
-        "Anubis/JLDC": from_anubis,
-        "UrlScan.io": from_urlscan,
-        "Wayback Machine": from_wayback,
-        "RapidDNS.io": from_rapiddns,
-        "ThreatMiner": from_threatminer,
-        "CertSpotter": from_certspotter,
-        "BeVigil": from_bevigil,
-        "SubdomainCenter": from_digitorum,
-        "Riddler.io": from_riddler
-    }
+    status_log(f"[*] TARGETING : {target.upper()}", Colors.SKY)
+    status_log(f"[*] MODE      : AGGRESSIVE DEPTH RECON ACTIVATED", Colors.GOLD)
+    status_log(f"{Colors.SLATE}{'-' * 60}{Colors.ENDC}")
 
-    all_found = set()
+    engines = [
+        source_abuseipdb, source_alienvault, source_anubis, source_bevigil,
+        source_bufferover, source_certspotter, source_commoncrawl, source_crtsh,
+        source_fullhunt, source_hackertarget, source_netcraft, source_omnisint,
+        source_rapiddns, source_sitedossier, source_subdomaincenter,
+        source_synapsint, source_urlscan, source_virustotal, source_wayback
+    ]
 
-    # Discovery phase
-    with ThreadPoolExecutor(max_workers=len(sources)) as executor:
-        future_to_source = {executor.submit(func, target): name for name, func in sources.items()}
+    discovered = set()
+    results_map = {}
+    
+    if sys.stdout.isatty():
+        anim_thread = threading.Thread(target=loading_animation)
+        anim_thread.start()
 
-        for future in as_completed(future_to_source):
-            source_name = future_to_source[future]
+    with ThreadPoolExecutor(max_workers=len(engines)) as executor:
+        task_map = {executor.submit(eng, target): eng.__name__.replace('source_', '').upper() for eng in engines}
+        for task in as_completed(task_map):
+            name = task_map[task]
             try:
-                data = future.result()
-                count = len(data) if data else 0
-                if count > 0:
-                    print(f"{Colors.GREEN}[✓] {Colors.WHITE}{source_name:<18} : {Colors.BOLD}{count:>4}{Colors.ENDC} subs discovered")
-                    all_found.update(data)
-                else:
-                    print(f"{Colors.RED}[✗] {Colors.GREY}{source_name:<18} : {Colors.BOLD}   0{Colors.ENDC} subs discovered")
-            except Exception:
-                print(f"{Colors.RED}[!] {source_name:<18} : API Connection Error{Colors.ENDC}")
+                found = task.result()
+                results_map[name] = found
+                if found: discovered.update(found)
+            except: results_map[name] = None
 
-    print(f"{Colors.GREY}{'-'*60}{Colors.ENDC}")
-    print(f"{Colors.YELLOW}[*] Cleaning and filtering duplicates...{Colors.ENDC}")
+    stop_animation = True
+    if sys.stdout.isatty():
+        anim_thread.join()
 
-    # Deduplication and filtering
-    # Step 1: Normalize all findings (lowercase, strip whitespace and trailing dots)
-    cleaned_results = set()
-    for sub in all_found:
-        clean_sub = sub.strip().lower().rstrip('.')
-        if clean_sub.endswith(target) and clean_sub != target:
-            cleaned_results.add(clean_sub)
-
-    final_raw_results = sorted(list(cleaned_results))
-
-    # Prominent Total Count
-    total_raw = len(final_raw_results)
-    print(f"{Colors.BOLD}{Colors.YELLOW}[★] TOTAL UNIQUE SUBDOMAINS FOUND: {Colors.WHITE}{total_raw}{Colors.ENDC}")
-
-    # Domain Verification
-    results_to_display = final_raw_results
-    if args.verify:
-        print(f"{Colors.MAGENTA}[*] Verifying DNS resolution for {total_raw} targets...{Colors.ENDC}")
-        verified_list = []
-
-        def check_sub(s):
-            return s if is_resolvable(s) else None
-
-        with ThreadPoolExecutor(max_workers=args.threads) as verify_executor:
-            v_futures = [verify_executor.submit(check_sub, sub) for sub in final_raw_results]
-            for f in as_completed(v_futures):
-                res = f.result()
-                if res:
-                    verified_list.append(res)
-
-        results_to_display = sorted(verified_list)
-        print(f"{Colors.GREEN}[✓] TOTAL LIVE SUBDOMAINS: {Colors.BOLD}{len(results_to_display)}{Colors.ENDC}")
-
-    # Final Result List Display
-    if results_to_display:
-        print(f"\n{Colors.BLUE}{Colors.BOLD}{'='*20} DISCOVERED LIST {'='*20}{Colors.ENDC}")
-        for sub in results_to_display:
-            parts = sub.rsplit(target, 1)
-            # Extra safety check for prefix formatting
-            prefix = parts[0] if parts[0] else ""
-            print(f"{Colors.GREEN}·{Colors.ENDC} {Colors.WHITE}{prefix}{Colors.CYAN}{target}{Colors.ENDC}")
-        print(f"{Colors.BLUE}{Colors.BOLD}{'='*57}{Colors.ENDC}")
-
-    # Interactive Save Logic
-    if results_to_display:
-        print(f"\n{Colors.YELLOW}[?] Do you want to save the results? (y/n): {Colors.ENDC}", end="")
-        choice = input().lower().strip()
-
-        if choice == 'y':
-            print(f"{Colors.YELLOW}[?] Enter filename (without extension): {Colors.ENDC}", end="")
-            filename = input().strip()
-            if not filename:
-                filename = f"subdomains_{target}_{int(time.time())}"
-
-            # Append .txt automatically
-            full_filename = filename if filename.endswith(".txt") else f"{filename}.txt"
-
-            try:
-                with open(full_filename, "w") as f:
-                    for sub in results_to_display:
-                        f.write(sub + "\n")
-                print(f"{Colors.GREEN}[✓] Results successfully saved to: {Colors.BOLD}{full_filename}{Colors.ENDC}")
-            except Exception as e:
-                print(f"{Colors.RED}[!] Error saving file: {e}{Colors.ENDC}")
+    # ALPHABETICAL SUMMARY
+    for name in sorted(results_map.keys()):
+        found = results_map[name]
+        count = len(found) if found else 0
+        if count > 0:
+            status_log(f" {Colors.MINT}[✓]{Colors.ENDC} {name:<18} : {Colors.BOLD}{count}{Colors.ENDC} FOUND", Colors.SILVER)
         else:
-            print(f"{Colors.GREY}[!] Results not saved.{Colors.ENDC}")
+            status_log(f" {Colors.CORAL}[✗]{Colors.ENDC} {name:<18} : 0 FOUND", Colors.SLATE)
 
-    print(f"\n{Colors.CYAN}{Colors.BOLD}Scan Finished. INTELEON404 at your service.{Colors.ENDC}")
+    # DEDUPLICATION & FINAL FILTER
+    final_list = {s.strip().lower().rstrip('.') for s in discovered if s.endswith(target) and s != target}
+    final_list = sorted(list(final_list))
+
+    status_log(f"{Colors.SLATE}{'-' * 60}{Colors.ENDC}")
+    status_log(f" {Colors.LAVENDER}[★] TOTAL UNIQUE DISCOVERED: {len(final_list)}{Colors.ENDC}", Colors.BOLD)
+
+    if args.verify and final_list:
+        status_log(f" [*] VERIFYING LIVE STATUS FOR {len(final_list)} HOSTS...", Colors.GOLD)
+        live = []
+        with ThreadPoolExecutor(max_workers=args.threads) as v_exec:
+            v_tasks = {v_exec.submit(dns_resolver, s): s for s in final_list}
+            for vt in as_completed(v_tasks):
+                if vt.result(): live.append(v_tasks[vt])
+        final_list = sorted(live)
+        status_log(f" {Colors.MINT}[✓] TOTAL LIVE HOSTS FOUND: {len(final_list)}{Colors.ENDC}", Colors.BOLD)
+
+    if not sys.stdout.isatty():
+        for s in final_list: sys.stdout.write(s + "\n")
+    else:
+        if final_list:
+            print(f"\n{Colors.SKY}{Colors.BOLD}{'='*25} RESULTS {'='*25}{Colors.ENDC}")
+            for s in final_list:
+                print(f" {Colors.MINT}→{Colors.ENDC} {Colors.SILVER}{s}{Colors.ENDC}")
+            print(f"{Colors.SKY}{Colors.BOLD}{'='*59}{Colors.ENDC}")
+            save_opt = input(f"\n{Colors.GOLD}[?] EXPORT RESULTS? (Y/N): {Colors.ENDC}").lower()
+            if save_opt == 'y':
+                fname = input(f"{Colors.GOLD}[?] FILENAME: {Colors.ENDC}") or f"hunter_{target}.txt"
+                if not fname.endswith(".txt"): fname += ".txt"
+                with open(fname, "w") as f: f.write("\n".join(final_list))
+                print(f" {Colors.MINT}[✓] DATA EXPORTED TO: {fname}{Colors.ENDC}")
+
+    status_log(f"\n {Colors.SKY}[!] SCAN COMPLETED. HAPPY HUNTING!{Colors.ENDC}")
 
 if __name__ == "__main__":
-    try:
-        main()
+    try: main()
     except KeyboardInterrupt:
-        print(f"\n{Colors.RED}[!] Interrupted by user. Exiting...{Colors.ENDC}")
+        stop_animation = True
+        status_log("\n [!] SESSION TERMINATED.", Colors.CORAL)
         sys.exit(0)
