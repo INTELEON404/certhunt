@@ -4,30 +4,44 @@ GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
+BOLD='\033[1m'
 NC='\033[0m'
 
-echo -e "${CYAN}=======================================${NC}"
-echo -e "${CYAN}    CERTHUNT AUTOMATED INSTALLER       ${NC}"
-echo -e "${CYAN}=======================================${NC}"
+clear
 
-echo -e "${YELLOW}[*] Installing python dependencies...${NC}"
-pip3 install requests urllib3 --break-system-packages 2>/dev/null || pip3 install requests urllib3
+echo -e "${CYAN}${BOLD}===============================================${NC}"
+echo -e "${CYAN}${BOLD}      CERTHUNT - INSTALLER                     ${NC}"
+echo -e "${CYAN}${BOLD}===============================================${NC}"
 
-echo -e "${YELLOW}[*] Downloading Certhunt from repository...${NC}"
-wget -q https://raw.githubusercontent.com/INTELEON404/certhunt/main/certhunt -O certhunt
+echo -e "${YELLOW}[*] Checking dependencies...${NC}"
+deps=(python3 pip3 wget sudo)
 
-if [ $? -ne 0 ]; then
-    echo -e "${RED}[!] Download failed! Please check your network connection.${NC}"
+for d in "${deps[@]}"; do
+    command -v "$d" &>/dev/null || {
+        echo -e "${RED}[!] Missing dependency: $d${NC}"
+        exit 1
+    }
+done
+echo -e "${GREEN}[✓] Dependencies OK${NC}"
+
+echo -e "${YELLOW}[*] Installing Python libraries...${NC}"
+pip3 install requests urllib3 argparse --break-system-packages 2>/dev/null \
+|| pip3 install requests urllib3 argparse || {
+    echo -e "${RED}[!] Python library install failed${NC}"
     exit 1
-fi
+}
+echo -e "${GREEN}[✓] Python libraries installed${NC}"
 
-echo -e "${YELLOW}[*] Moving binary to /usr/local/bin/certhunt...${NC}"
-sudo mv certhunt /usr/local/bin/certhunt
+TARGET_BIN="/usr/local/bin/certhunt"
 
-echo -e "${YELLOW}[*] Granting executable permissions...${NC}"
-sudo chmod +x /usr/local/bin/certhunt
+echo -e "${YELLOW}[*] Installing certhunt...${NC}"
+[ -f certhunt.py ] || {
+    echo -e "${RED}[!] certhunt not found${NC}"
+    exit 1
+}
 
-echo -e "---------------------------------------"
-echo -e "${GREEN}[✓] Installation Successful!${NC}"
-echo -e "${CYAN}Usage: ${NC}certhunt -d example.com"
-echo -e "---------------------------------------"
+sudo cp certhunt "$TARGET_BIN"
+sudo chmod +x "$TARGET_BIN"
+
+echo -e "${GREEN}${BOLD}[✓] Installation complete${NC}"
+echo -e "${CYAN}Run: ${BOLD}certhunt -d target.com${NC}"
