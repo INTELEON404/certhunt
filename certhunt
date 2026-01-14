@@ -40,7 +40,7 @@ def status_log(msg, color=Colors.SILVER):
 
 def loading_animation():
     """ANIMATION STYLE: . > .. > ..."""
-    for dots in itertools.cycle(['⠏', '⠛', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠍']):
+    for dots in itertools.cycle(['‎ ','⠏', '⠛', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠍']):
         if stop_animation:
             break
         sys.stdout.write(f"\r {Colors.GOLD}EXTRACTING DEEP DATA{dots}{Colors.ENDC}")
