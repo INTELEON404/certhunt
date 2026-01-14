@@ -22,10 +22,10 @@ if [ $? -ne 0 ]; then
 fi
 
 echo -e "${YELLOW}[*] Moving binary to /usr/local/bin/certhunt...${NC}"
-sudo mv certhunt /usr/bin/certhunt
+sudo mv certhunt /usr/local/bin/certhunt
 
 echo -e "${YELLOW}[*] Granting executable permissions...${NC}"
-sudo chmod +x /usr/bin/certhunt
+sudo chmod +x /usr/local/bin/certhunt
 
 echo -e "---------------------------------------"
 echo -e "${GREEN}[✓] Installation Successful!${NC}"
