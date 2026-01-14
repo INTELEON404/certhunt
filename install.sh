@@ -21,7 +21,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-echo -e "${YELLOW}[*] Moving binary to /usr/bin/certhunt...${NC}"
+echo -e "${YELLOW}[*] Moving binary to /usr/local/bin/certhunt...${NC}"
 sudo mv certhunt /usr/bin/certhunt
 
 echo -e "${YELLOW}[*] Granting executable permissions...${NC}"
