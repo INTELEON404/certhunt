@@ -3,7 +3,7 @@
   <br><br>
 </div>
 
-# 🏹 CERTHUNT v1
+# 🏹 CERTHUNT v1.3
 
 ### **“Automated Passive Domain Enumeration & DNS Validation”**
 
