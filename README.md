@@ -63,7 +63,7 @@ pip install requests urllib3 --break-system-packages
 #### Move to /usr/bin for global access
 ```
 chmod +x certhunt
-sudo mv certhunt /usr/bin/certhunt
+sudo mv certhunt /usr/local/bin/
 
 ```
 
