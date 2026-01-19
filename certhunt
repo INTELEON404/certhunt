@@ -40,7 +40,6 @@ def status_log(msg, color=Colors.SILVER):
         print(f"{color}{msg}{Colors.ENDC}")
 
 def loading_animation():
-    """আপনার দেওয়া ব্রেইল ক্যারেক্টার দিয়ে লোডিং স্পিনার"""
     # '⠏', '⠛', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠍'
     spinner = itertools.cycle(['⠏', '⠛', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠍'])
     while not stop_animation:
