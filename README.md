@@ -3,7 +3,7 @@
   <br><br>
 </div>
 
-# CERTHUNT v1.4
+# CERTHUNT v1.3
 
 **Passive Subdomain Reconnaissance & Validation Tool**
 
