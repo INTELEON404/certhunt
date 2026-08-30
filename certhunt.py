@@ -466,11 +466,11 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python3 certhunt.py -d example.com
-  python3 certhunt.py -d example.com --verify
-  python3 certhunt.py -d example.com --http
-  python3 certhunt.py -d example.com --http --status
-  python3 certhunt.py -d example.com --verify --http --status
+  certhunt -d example.com
+  certhunt -d example.com --verify
+  certhunt -d example.com --http
+  certhunt -d example.com --http --status
+  certhunt -d example.com --verify --http --status
         """
     )
     
