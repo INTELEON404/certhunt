@@ -1,135 +1,193 @@
 <div align="center">
-  <img src="https://github.com/INTELEON404/Template/blob/main/certhunt.png" width="700" alt="TEMPLATE-PLUS Logo"/>
+  <img src="https://github.com/INTELEON404/Template/blob/main/certhunt.png" width="700" alt="CERTHUNT Logo"/>
   <br><br>
 </div>
 
-# 🏹 CERTHUNT v1.3
+# CERTHUNT v1.4
 
-### **“Automated Passive Domain Enumeration & DNS Validation”**
+**Passive Subdomain Reconnaissance & Validation Tool**
 
-**CERTHUNT v1** (also known as **HUNTER**) is a high-performance, multi-threaded reconnaissance tool designed for security researchers and Bug Bounty hunters. It streamlines the "Passive Reconnaissance" phase by querying multiple public APIs and databases to discover subdomains without interacting directly with the target infrastructure.
-
----
-
-## 🌟 Key Features
-
-* **19+ Passive Sources:** Aggregates data from reliable sources like Crt.sh, AlienVault, Wayback Machine, and more.
-* **Intelligent Deduplication:** Automatically cleans, normalizes, and removes duplicate entries from different sources.
-* **Active DNS Verification:** Optional high-speed DNS resolution to identify which discovered subdomains are actually "Live."
-* **Multi-threaded Engine:** Powered by `ThreadPoolExecutor` for simultaneous API querying and rapid verification.
-* **Global Access:** Easily installable as a system-wide command for seamless usage.
-* **Automatic Export:** Interactive prompt to save discovered targets into a structured `.txt` file.
+CERTHUNT is a multi-threaded reconnaissance utility for security researchers and penetration testers. It aggregates subdomain data from 20 passive OSINT sources, validates discovered hosts via DNS resolution, and optionally probes live services using HTTPX.
 
 ---
 
-## 🛠 Supported OSINT Sources
+## Features
 
-| Category | Sources Integrated |
+- **20 Passive Sources:** Certificate transparency logs, search engines, crawlers, and passive DNS APIs.
+- **RFC 1123 Validation:** Strict hostname normalization with domain boundary enforcement.
+- **DNS Verification:** Concurrent resolution to confirm live hosts.
+- **HTTPX Integration:** Optional HTTP/HTTPS probing with status code reporting.
+- **Controlled Concurrency:** Bounded thread pools to prevent resource exhaustion.
+- **Dual Output Modes:** Interactive TTY with color-coded output, or clean stdout for piping.
+- **Graceful Degradation:** Per-source error isolation ensures one failed API does not abort the scan.
+
+---
+
+## Sources
+
+| Category | Sources |
 | --- | --- |
-| **Certificate Transparency** | Crt.sh, CertSpotter |
-| **Search & Crawlers** | Wayback Machine, URLScan.io, Riddler.io |
-| **Passive DNS/APIs** | AlienVault OTX, HackerTarget, Anubis, RapidDNS, ThreatMiner, BeVigil, SubdomainCenter |
+| Certificate Transparency | Crt.sh, CertSpotter, Crt.name |
+| Search & Archives | Wayback Machine, CommonCrawl, URLScan.io |
+| Passive DNS / APIs | AbuseIPDB, AlienVault OTX, Anubis, BeVigil, BufferOver, FullHunt, HackerTarget, Omnisint, RapidDNS, SubdomainCenter, Synapsint, VirusTotal |
+| Web Intelligence | Netcraft, SiteDossier |
 
 ---
 
-## 🚀 Installation
+## Installation
 
-Choose one of the two methods below. The **Automated Install** is recommended for quick setup.
-
-### 1. Quick Automated Install (Recommended)
-
-Run this command in your terminal to install the tool and its dependencies automatically:
+### Automated
 
 ```bash
-wget -q https://raw.githubusercontent.com/INTELEON404/certhunt/main/install.sh -O install.sh && chmod +x install.sh && ./install.sh
-```
-```
+wget -q https://raw.githubusercontent.com/INTELEON404/certhunt/main/install.sh -O install.sh
+chmod +x install.sh && ./install.sh
 rm install.sh
 ```
 
-### 2. Manual Installation
+### Manual
 
-If you prefer to set it up manually:
-
-#### Clone the repository
-```
+```bash
 git clone https://github.com/INTELEON404/certhunt.git
 cd certhunt
+pip install requests
+chmod +x certhunt.py
 ```
-#### Install dependencies
-```
-pip install requests urllib3 --break-system-packages
-```
-#### Move to /usr/bin for global access
-```
-chmod +x certhunt
-sudo mv certhunt /usr/local/bin/
 
+### Optional: HTTPX
+
+Required for `--http` and `--status` functionality:
+
+```bash
+go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest
+```
+
+Verify installation:
+
+```bash
+python3 -c "import requests; print('OK')"
+which httpx
 ```
 
 ---
 
-## 💻 Usage
+## Usage
 
-After installation, you can run the tool from any directory using the `certhunt` command.
-
-### Basic Enumeration
-
-To find subdomains via passive APIs:
+### Passive Enumeration
 
 ```bash
-certhunt -d google.com
-
+python3 certhunt.py -d example.com
 ```
 
-### Full Recon (Discovery + Live Validation)
-
-Find subdomains and verify if they resolve to an active IP address:
+### With DNS Verification
 
 ```bash
-certhunt -d example.com -v
-
+python3 certhunt.py -d example.com --verify
 ```
 
-### Advanced Threading
-
-Speed up the verification process for large result sets by increasing the thread count:
+### With HTTPX Filtering
 
 ```bash
-certhunt -d example.com -v -t 100
+python3 certhunt.py -d example.com --http
+```
 
+### Full Workflow
+
+```bash
+python3 certhunt.py -d example.com --verify --http --status
+```
+
+### Non-Interactive (Piping)
+
+```bash
+python3 certhunt.py -d example.com | sort > subdomains.txt
 ```
 
 ---
 
-## ⚙️ Command Line Arguments
+## Arguments
 
-| Argument | Long Form | Description |
+| Short | Long | Description |
 | --- | --- | --- |
-| `-d` | `--domain` | **(Required)** The target domain to scan (e.g., target.com) |
-| `-v` | `--verify` | Enable DNS resolution to check if subdomains are active |
-| `-t` | `--threads` | Set number of concurrent threads for verification (Default: 20) |
+| `-d` | `--domain` | Target domain (required) |
+| `-v` | `--verify` | Verify live hosts via DNS resolution |
+| `-t` | `--threads` | Thread count for HTTPX (default: 60, range: 1-1000) |
+| | `--http` | Enable HTTP/HTTPS probing via httpx |
+| | `--status` | Display HTTP status codes (requires `--http`) |
 
 ---
 
-## 🔄 Workflow Logic
+## Workflow
 
-1. **Input Normalization:** Strips protocols (http/https) and 'www' to ensure a clean target domain.
-2. **Parallel Harvesting:** Launches threads for each API source simultaneously for maximum speed.
-3. **Data Cleaning:** Filters out out-of-scope domains and normalizes the text.
-4. **Verification (Optional):** Performs DNS lookups to validate the existence of the discovered hosts.
-5. **Reporting:** Displays a color-coded summary and offers to save the output locally as a `.txt` file.
-
----
-
-## ⚖️ Disclaimer
-
-This tool is intended for **legal** security auditing and educational purposes only. Unauthorized scanning of targets without prior consent is illegal. The developer is not responsible for any misuse or damage caused by this program.
+1. **Normalization** — Strips protocols, paths, wildcards, and trailing dots. Validates against RFC 1123.
+2. **Harvesting** — Queries all 20 sources concurrently (max 20 workers).
+3. **Deduplication** — Set-based normalization with strict domain boundary checks.
+4. **Verification** — Optional DNS resolution (max 100 workers).
+5. **HTTP Probing** — Optional httpx execution with dynamic timeout scaling (60–300s).
+6. **Output** — Interactive export prompt or clean stdout for scripts.
 
 ---
 
-### 👨‍💻 About the Author
+## Performance
 
-Developed by **[INTELEON404](https://www.google.com/search?q=https://github.com/INTELEON404)**.
+| Phase | Workers | Timeout |
+| --- | --- | --- |
+| Passive Sources | 20 | 35s per request |
+| DNS Verification | 100 | System default |
+| HTTPX Probing | User-defined (`-t`) | 60–300s (dynamic) |
 
-Contributions, issues, and feature requests are welcome!
+Typical memory usage: ~5–10 MB for 10,000 subdomains.  
+Typical runtime: 30–120 seconds depending on API availability.
+
+---
+
+## Error Handling
+
+Source failures are categorized without terminating the scan:
+
+| Category | Cause |
+| --- | --- |
+| TIMEOUT | Request exceeded 35 seconds |
+| CONNECT_ERROR | Network-level connection failure |
+| HTTP_ERROR | 4xx client error |
+| SERVER_ERROR | 5xx server error |
+| INVALID_JSON | Response received but JSON parsing failed |
+
+---
+
+## Security
+
+- Subprocess calls use argument arrays; `shell=True` is never used.
+- All hostnames are normalized and validated before API or subprocess interaction.
+- File operations use UTF-8 encoding with proper exception handling.
+
+---
+
+## Requirements
+
+- Python 3.6+
+- `requests` library
+- Internet connectivity
+- `httpx` (optional, for `--http` / `--status`)
+
+---
+
+## Limitations
+
+- Passive sources may rate-limit or require external API availability.
+- DNS verification requires network connectivity.
+- HTTPX is optional; without it, HTTP filtering is unavailable.
+- No authentication support for premium APIs.
+- Results are held in memory only; no database persistence.
+
+---
+
+## Disclaimer
+
+This tool is intended for authorized security research and educational purposes only. Use only on systems you own or have explicit permission to test. The author assumes no liability for misuse.
+
+---
+
+## License & Contributions
+
+Developed by [INTELEON404](https://github.com/INTELEON404).
+
